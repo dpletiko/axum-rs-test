@@ -102,7 +102,7 @@ impl Authenticable for Users {
 
                 // Unlock account
                 user_auth = Auths::unlock(&user_auth)?;
-                anyhow::bail!(format!("Account is locked until {} {}", user_auth.locked_until.expect("AAAAA").to_string(), user_auth.tries.to_string()));
+                // anyhow::bail!(format!("Account is locked until {} {}", user_auth.locked_until.expect("AAAAA").to_string(), user_auth.tries.to_string()));
             }
         }
 

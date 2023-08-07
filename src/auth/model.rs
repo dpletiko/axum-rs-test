@@ -95,34 +95,27 @@ impl Authenticable for Users {
         match user_auth.locked_until {
             None => (),
             Some(locked_until) => {
-
                 if locked_until.gt(&Utc::now()) {
                     anyhow::bail!(format!("Account is locked until {}", locked_until.to_string()));
                 }
 
                 // Unlock account
                 user_auth = Auths::unlock(&user_auth)?;
-                // anyhow::bail!(format!("Account is locked until {} {}", user_auth.locked_until.expect("AAAAA").to_string(), user_auth.tries.to_string()));
             }
         }
 
         if auth.pin() != user_auth.pin {
+            user_auth.tries += 1;
+
             if user_auth.tries >= 3 {
                 user_auth.locked_until = Some(Utc::now() + Duration::minutes(1));
                 user_auth = Auths::update(user_auth.id, user_auth.into())?;
 
                 anyhow::bail!(format!("Account is locked until {}", user_auth.locked_until.unwrap().to_string()));
-            } else {
-                user_auth.tries += 1;
-
-                if user_auth.tries >= 3 {
-                    user_auth.locked_until = Some(Utc::now() + Duration::minutes(1));
-                }
-
-                user_auth = Auths::update(user_auth.id, user_auth.into())?;
-
-                anyhow::bail!(format!("Invalid credentials. Tries remaining: {}", (3 - user_auth.tries).to_string()));
             }
+
+            user_auth = Auths::update(user_auth.id, user_auth.into())?;
+            anyhow::bail!(format!("Invalid credentials. Tries remaining: {}", (3 - user_auth.tries).to_string()));
         }
 
         Ok(AuthResponse { user, token: "".to_string(), permissions: None })

@@ -44,7 +44,7 @@ pub struct AuthResponse {
 
 
 async fn email(Json(auth): Json<AuthCodeRequest>) -> Result<Json<ApiResponse<AuthCodeRequest>>, AppError> {
-    let user = Users::request_auth_code(auth.into())?;
+    let user = Users::request_auth_code(auth.into()).await?;
 
     Ok(Json(ApiResponse::success(user, Some("Check your email for the verification pin code".to_string()))))
 }

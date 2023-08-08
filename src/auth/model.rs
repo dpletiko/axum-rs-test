@@ -1,14 +1,15 @@
 use crate::users::{User, Users};
-use crate::utils::ApiResponse;
-use crate::{db, error_handler::AppError, auth::routes::{AuthRequest, AuthCodeRequest, AuthResponse}};
+use crate::utils::Mailable;
+use crate::{db, auth::routes::{AuthRequest, AuthCodeRequest, AuthResponse}, utils::Mailer};
 use crate::schema::{users, auth};
-use axum::Json;
 use chrono::{DateTime, Duration};
 use chrono::offset::Utc;
 use diesel::prelude::*;
 use diesel::Queryable;
+use mail_send::mail_builder::headers::address::Address;
 use serde::{Deserialize, Serialize};
 use rand::{thread_rng, Rng};
+use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = auth)]
@@ -38,8 +39,9 @@ pub struct Auths {
     pub updated_at: DateTime<Utc>,
 }
 
+#[async_trait]
 impl Authenticable for Users {
-    fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
+    async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
         // let mut conn = db::connection()?;
 
         // let user = Users::email(auth.email());
@@ -79,6 +81,12 @@ impl Authenticable for Users {
         // TODO: Check tries?
 
         // TODO: Notify user
+        println!("Attempt to send mail to user [{0}]", user.email);
+        Mailer::send_mail(Mailable {
+            to: (user.email, user.name).into(),
+            content: format!("Verification code [{}]", user_auth.pin).to_string(),
+            subject: format!("Verification code [{}]", user_auth.pin)
+        }).await;
 
         Ok(auth)
     }
@@ -139,8 +147,9 @@ impl Authenticable for Users {
     }
 }
 
+#[async_trait]
 pub trait Authenticable {
-    fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error>;
+    async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error>;
 
     fn login(auth: AuthRequest) -> Result<AuthResponse, anyhow::Error>;
 

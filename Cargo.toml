@@ -25,3 +25,5 @@ chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0"
 tower-livereload = "0.8.0"
 rand = "0.8.5"
+mail-send = "0.4.0"
+async-trait = "0.1.72"

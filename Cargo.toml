@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { version = "0.6", features = ["macros"] }
+axum = { version = "0.6", features = ["macros", "headers", "multipart", "http2", "ws"] }
 deadpool-diesel = { version = "0.4.1", features = ["postgres"] }
 diesel = { version = "2", features = ["postgres", "r2d2", "uuid", "chrono"] }
 diesel_migrations = "2"
@@ -27,3 +27,8 @@ tower-livereload = "0.8.0"
 rand = "0.8.5"
 mail-send = "0.4.0"
 async-trait = "0.1.72"
+tower = "0.4.13"
+jsonwebtoken = "8.3.0"
+once_cell = "1.18.0"
+axum-extra = { version = "0.7.7", features = ["form", "typed-routing", "multipart", "query"] }
+headers = "0.3.8"

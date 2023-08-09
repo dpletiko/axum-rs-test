@@ -1,12 +1,11 @@
 use crate::users::{User, Users};
 use crate::utils::Mailable;
-use crate::{db, auth::routes::{AuthRequest, AuthCodeRequest, AuthResponse}, utils::Mailer};
+use crate::{db, auth::routes::{AuthRequest, AuthCodeRequest}, utils::Mailer};
 use crate::schema::{users, auth};
 use chrono::{DateTime, Duration};
 use chrono::offset::Utc;
 use diesel::prelude::*;
 use diesel::Queryable;
-use mail_send::mail_builder::headers::address::Address;
 use serde::{Deserialize, Serialize};
 use rand::{thread_rng, Rng};
 use async_trait::async_trait;
@@ -39,9 +38,9 @@ pub struct Auths {
     pub updated_at: DateTime<Utc>,
 }
 
-#[async_trait]
-impl Authenticable for Users {
-    async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
+// #[async_trait]
+impl Users {
+    pub  async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
         // let mut conn = db::connection()?;
 
         // let user = Users::email(auth.email());
@@ -91,7 +90,7 @@ impl Authenticable for Users {
         Ok(auth)
     }
 
-    fn login(auth: AuthRequest) -> Result<AuthResponse, anyhow::Error> {
+    pub fn login(auth: AuthRequest) -> Result<Self, anyhow::Error> {
         // let mut conn = db::connection()?;
 
         let user = Users::email(auth.email())?;
@@ -126,10 +125,11 @@ impl Authenticable for Users {
             anyhow::bail!(format!("Invalid credentials. Tries remaining: {}", (3 - user_auth.tries).to_string()));
         }
 
-        Ok(AuthResponse { user, token: "".to_string(), permissions: None })
+        // Ok(AuthResponse { user, token: "".to_string(), permissions: None })
+        Ok(user)
     }
 
-    fn logout() -> Result<Option<()>, anyhow::Error> {
+    pub fn logout() -> Result<Option<()>, anyhow::Error> {
         let mut conn = db::connection()?;
 
         // let user = User::from(user);
@@ -140,23 +140,23 @@ impl Authenticable for Users {
         Ok(None)
     }
 
-    fn profile() -> Result<Option<()>, anyhow::Error> {
+    pub fn profile() -> Result<Option<()>, anyhow::Error> {
         // let mut conn = db::connection()?;
         // let user = users::table.filter(users::id.eq(id)).first(&mut conn)?;
         Ok(None)
     }
 }
 
-#[async_trait]
-pub trait Authenticable {
-    async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error>;
-
-    fn login(auth: AuthRequest) -> Result<AuthResponse, anyhow::Error>;
-
-    fn logout() -> Result<Option<()>, anyhow::Error>;
-
-    fn profile() -> Result<Option<()>, anyhow::Error>;
-}
+// #[async_trait]
+// pub trait Authenticable {
+//     async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error>;
+//
+//     fn login(auth: AuthRequest) -> Result<AuthResponse, anyhow::Error>;
+//
+//     fn logout() -> Result<Option<()>, anyhow::Error>;
+//
+//     fn profile() -> Result<Option<()>, anyhow::Error>;
+// }
 
 impl Auths {
     pub fn all() -> Result<Vec<Self>, anyhow::Error> {

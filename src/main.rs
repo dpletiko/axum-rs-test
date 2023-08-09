@@ -15,12 +15,7 @@
 // #[macro_use]
 // extern crate diesel_migrations;
 
-use axum::{
-    // extract::State,
-    http::StatusCode,
-    routing::get,
-    Router,
-};
+use axum::http::StatusCode;
 // use diesel::prelude::*;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -29,6 +24,7 @@ use tracing::Level;
 use tower_http::trace::{self, TraceLayer};
 
 
+mod router;
 mod utils;
 
 mod error_handler;
@@ -56,21 +52,13 @@ async fn main() {
 
     db::init().await;
 
-
-    // build our application with some routes
-    let app = Router::new()
-        .route("/", get(root))
-        .merge(auth::init_routes())
-        .merge(users::init_routes())
-        .merge(boards::init_routes())
-        .merge(widgets::init_routes())
+    let app = router::init()
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(tower_livereload::LiveReloadLayer::new());
-        // .with_state();
 
 
     // run our app with hyper
@@ -81,11 +69,6 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
-
-
-async fn root() -> &'static str {
-    "Hello, World!"
 }
 
 /// Utility function for mapping any error into a `500 Internal Server Error`

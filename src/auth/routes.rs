@@ -1,8 +1,7 @@
 use crate::{
     error_handler::AppError,
     users::Users,
-    auth::Authenticable,
-    utils::ApiResponse
+    utils::{ApiResponse, Jwt, AuthPayload}
 };
 use axum::{
     response::Json,
@@ -35,24 +34,18 @@ impl AuthRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AuthResponse {
-    pub user: Users,
-    pub token: String,
-    pub permissions: Option<Vec<String>>
-}
-
-
 async fn email(Json(auth): Json<AuthCodeRequest>) -> Result<Json<ApiResponse<AuthCodeRequest>>, AppError> {
     let user = Users::request_auth_code(auth.into()).await?;
 
     Ok(Json(ApiResponse::success(user, Some("Check your email for the verification pin code".to_string()))))
 }
 
-async fn login(Json(auth): Json<AuthRequest>) -> Result<Json<ApiResponse<AuthResponse>>, AppError> {
+async fn login(Json(auth): Json<AuthRequest>) -> Result<Json<ApiResponse<AuthPayload>>, AppError> {
     let user = Users::login(auth.into())?;
 
-    Ok(Json(ApiResponse::success(user, Some("Successfully logged in!".to_string()))))
+    let auth_payload = Jwt::generate(user).unwrap();
+
+    Ok(Json(ApiResponse::success(auth_payload, Some("Successfully logged in!".to_string()))))
 }
 
 async fn logout() -> Result<Json<ApiResponse<Option<()>>>, AppError> {

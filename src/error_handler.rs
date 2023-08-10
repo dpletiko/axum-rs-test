@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
+    Json
 };
 use serde_json::json;
 
@@ -32,5 +32,36 @@ where
 {
     fn from(err: E) -> Self {
         Self(err.into())
+    }
+}
+
+
+// We create our own rejection type
+#[derive(Debug)]
+pub struct ApiError {
+    status: StatusCode,
+    message: String,
+}
+
+// We implement `From<JsonRejection> for ApiError`
+// impl From<JsonRejection> for ApiError {
+//     fn from(rejection: JsonRejection) -> Self {
+//         Self {
+//             status: rejection.status(),
+//             message: rejection.body_text(),
+//         }
+//     }
+// }
+
+// We implement `IntoResponse` so `ApiError` can be used as a response
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        let payload = json!({
+            "status": "error",
+            "message": self.message,
+            "origin": "derive_from_request"
+        });
+
+        (self.status, axum::Json(payload)).into_response()
     }
 }

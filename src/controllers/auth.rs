@@ -1,6 +1,6 @@
 use crate::{
     error_handler::AppError,
-    users::Users,
+    models::user::User,
     utils::{ApiResponse, Jwt, AuthPayload}
 };
 use axum::{
@@ -35,13 +35,13 @@ impl AuthRequest {
 }
 
 async fn email(Json(auth): Json<AuthCodeRequest>) -> Result<Json<ApiResponse<AuthCodeRequest>>, AppError> {
-    let user = Users::request_auth_code(auth.into()).await?;
+    let user = User::request_auth_code(auth.into()).await?;
 
     Ok(Json(ApiResponse::success(user, Some("Check your email for the verification pin code".to_string()))))
 }
 
 async fn login(Json(auth): Json<AuthRequest>) -> Result<Json<ApiResponse<AuthPayload>>, AppError> {
-    let user = Users::login(auth.into())?;
+    let user = User::login(auth.into())?;
 
     let auth_payload = Jwt::generate(user).unwrap();
 
@@ -49,15 +49,11 @@ async fn login(Json(auth): Json<AuthRequest>) -> Result<Json<ApiResponse<AuthPay
 }
 
 async fn logout() -> Result<Json<ApiResponse<Option<()>>>, AppError> {
-    let user = Users::logout()?;
+    let user = User::logout()?;
 
     Ok(Json(ApiResponse::success(None, Some("Successfully logged out!".to_string()))))
 }
 
-async fn profile() -> Result<Json<Option<()>>, AppError> {
-    let user = Users::profile()?;
-    Ok(Json(user))
-}
 
 pub fn init_routes() -> Router {
     Router::new()

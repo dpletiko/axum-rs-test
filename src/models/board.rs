@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = boards)]
-pub struct Board {
+pub struct CreateBoard {
     pub name: String,
     pub user_id: i32,
     // pub created_at: DateTime<Utc>,
@@ -16,7 +16,7 @@ pub struct Board {
 
 #[derive(Serialize, Deserialize, Queryable, Insertable)]
 #[diesel(table_name = boards)]
-pub struct Boards {
+pub struct Board {
     pub id: i32,
     pub name: String,
     pub user_id: i32,
@@ -24,10 +24,10 @@ pub struct Boards {
     pub updated_at: DateTime<Utc>,
 }
 
-impl Boards {
+impl Board {
     pub fn all() -> Result<Vec<Self>, anyhow::Error> {
         let mut conn = db::connection()?;
-        let boards = boards::table.load::<Boards>(&mut conn)?;
+        let boards = boards::table.load::<Board>(&mut conn)?;
         Ok(boards)
     }
 
@@ -37,16 +37,16 @@ impl Boards {
         Ok(board)
     }
 
-    pub fn create(board: Board) -> Result<Self, anyhow::Error> {
+    pub fn create(board: CreateBoard) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
-        let board = Board::from(board);
+        let board = CreateBoard::from(board);
         let board = diesel::insert_into(boards::table)
             .values(board)
             .get_result(&mut conn)?;
         Ok(board)
     }
 
-    pub fn update(id: i32, board: Board) -> Result<Self, anyhow::Error> {
+    pub fn update(id: i32, board: CreateBoard) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
         let board = diesel::update(boards::table)
             .filter(boards::id.eq(id))
@@ -62,9 +62,9 @@ impl Boards {
     }
 }
 
-impl Board {
-    fn from(board: Board) -> Board {
-        Board {
+impl CreateBoard {
+    fn from(board: CreateBoard) -> CreateBoard {
+        CreateBoard {
             name: board.name,
             user_id: board.user_id,
             // created_at: board.created_at,

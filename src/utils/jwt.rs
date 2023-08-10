@@ -14,35 +14,28 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Serialize, Deserialize};
 use once_cell::sync::Lazy;
 use serde_json::json;
-use crate::users::Users;
+use crate::{models::user::User, config::CONFIG};
 
 
-pub struct Jwt {
-    encoding: EncodingKey,
-    decoding: DecodingKey,
-}
+pub struct Jwt {}
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
+pub struct Claims {
     // subject
-    sub: i32,
+    pub sub: i32,
     // issuer
-    iss: String,
+    pub iss: String,
     // expiration time
-    exp: usize,
+    pub exp: usize,
     // issued at
-    ias: i64
+    pub iat: i64
 }
 
 impl Jwt {
-    fn new(secret: &[u8]) -> Self {
-        Self {
-            encoding: EncodingKey::from_secret(secret),
-            decoding: DecodingKey::from_secret(secret),
-        }
-    }
+    pub fn generate(user: User) -> Result<AuthPayload, AuthError> {
+        let iat = Utc::now().timestamp();
+        // TODO: Use config duration stuff
 
-    pub fn generate(user: Users) -> Result<AuthPayload, AuthError> {
         let claims = Claims {
             iss: "kazzimir".to_owned(),
 
@@ -51,13 +44,15 @@ impl Jwt {
 
             // Mandatory expiry time as UTC timestamp
             exp: 2000000000, // May 2033
-            ias: Utc::now().timestamp()
+
+            iat
         };
+
 
         let token = encode(
             &Header::default(),
             &claims,
-            &JWT_CONFIG.encoding
+            &CONFIG.jwt().encoding()
         ).map_err(|_| AuthError::TokenCreation)?;
 
 
@@ -90,9 +85,14 @@ where
             .await
             .map_err(|_| AuthError::InvalidToken)?;
 
+
         // Decode the user data
-        let token_data = decode::<Claims>(bearer.token(), &JWT_CONFIG.decoding, &Validation::default())
-            .map_err(|_| AuthError::InvalidToken)?;
+        let token_data = decode::<Claims>(
+            bearer.token(),
+            &CONFIG.jwt().decoding(),
+            &Validation::default()
+        ).map_err(|_| AuthError::InvalidToken)?;
+
 
         Ok(token_data.claims)
     }
@@ -102,7 +102,7 @@ where
 pub struct AuthPayload {
     access_token: String,
     token_type: String,
-    user: Users
+    user: User
 }
 
 
@@ -131,9 +131,3 @@ impl IntoResponse for AuthError {
         (status, body).into_response()
     }
 }
-
-
-static JWT_CONFIG: Lazy<Jwt> = Lazy::new(|| {
-    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    Jwt::new(secret.as_bytes())
-});

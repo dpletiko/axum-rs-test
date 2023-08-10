@@ -24,6 +24,7 @@ use tracing::Level;
 use tower_http::trace::{self, TraceLayer};
 
 
+mod config;
 mod router;
 mod utils;
 
@@ -31,10 +32,8 @@ mod error_handler;
 mod db;
 mod schema;
 
-mod auth;
-mod users;
-mod boards;
-mod widgets;
+mod models;
+mod controllers;
 
 
 #[tokio::main]

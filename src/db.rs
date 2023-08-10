@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use r2d2;
 use std::env;
 
+use crate::config::CONFIG;
 use crate::error_handler::AppError;
 
 type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -15,8 +16,9 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
 lazy_static! {
     static ref POOL: Pool = {
-        let db_url = env::var("DATABASE_URL").expect("Database url not set");
-        let manager = ConnectionManager::<PgConnection>::new(db_url);
+        let manager = ConnectionManager::<PgConnection>::new(
+            CONFIG.db().url()
+        );
         Pool::new(manager).expect("Failed to create db pool")
     };
 }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = users)]
-pub struct User {
+pub struct CreateUser {
     pub name: String,
     pub email: String,
     // pub email_verified_at: Option<DateTime<Utc>>,
@@ -15,9 +15,9 @@ pub struct User {
     // pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Queryable, Insertable)]
+#[derive(Debug, Serialize, Deserialize, Queryable, Insertable, Clone)]
 #[diesel(table_name = users)]
-pub struct Users {
+pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
@@ -26,10 +26,10 @@ pub struct Users {
     pub updated_at: DateTime<Utc>,
 }
 
-impl Users {
+impl User {
     pub fn all() -> Result<Vec<Self>, anyhow::Error> {
         let mut conn = db::connection()?;
-        let users = users::table.load::<Users>(&mut conn)?;
+        let users = users::table.load::<User>(&mut conn)?;
         Ok(users)
     }
 
@@ -45,16 +45,16 @@ impl Users {
         Ok(user)
     }
 
-    pub fn create(user: User) -> Result<Self, anyhow::Error> {
+    pub fn create(user: CreateUser) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
-        let user = User::from(user);
+        let user = CreateUser::from(user);
         let user = diesel::insert_into(users::table)
             .values(user)
             .get_result(&mut conn)?;
         Ok(user)
     }
 
-    pub fn update(id: i32, user: User) -> Result<Self, anyhow::Error> {
+    pub fn update(id: i32, user: CreateUser) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
         let user = diesel::update(users::table)
             .filter(users::id.eq(id))
@@ -70,9 +70,9 @@ impl Users {
     }
 }
 
-impl User {
-    fn from(user: User) -> User {
-        User {
+impl CreateUser {
+    fn from(user: CreateUser) -> CreateUser {
+        CreateUser {
             name: user.name,
             email: user.email,
             // email_verified_at: user.email_verified_at,

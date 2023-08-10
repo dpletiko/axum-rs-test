@@ -1,7 +1,7 @@
-use crate::users::{User, Users};
+use crate::models::user::{CreateUser, User};
 use crate::utils::Mailable;
-use crate::{db, auth::routes::{AuthRequest, AuthCodeRequest}, utils::Mailer};
-use crate::schema::{users, auth};
+use crate::{db, controllers::auth::{AuthRequest, AuthCodeRequest}, utils::Mailer};
+use crate::schema::auth;
 use chrono::{DateTime, Duration};
 use chrono::offset::Utc;
 use diesel::prelude::*;
@@ -13,7 +13,7 @@ use async_trait::async_trait;
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = auth)]
 // #[changeset_options(treat_none_as_null = "true")]
-pub struct Auth {
+pub struct CreateAuth {
     pub user_id: i32,
     pub pin: String,
     pub tries: i32,
@@ -24,10 +24,10 @@ pub struct Auth {
 }
 
 #[derive(Serialize, Deserialize, Queryable, PartialEq, Insertable, Identifiable, Associations, AsChangeset)]
-#[diesel(belongs_to(Users, foreign_key = user_id))]
+#[diesel(belongs_to(User, foreign_key = user_id))]
 #[diesel(table_name = auth)]
 // #[changeset_options(treat_none_as_null = "true")]
-pub struct Auths {
+pub struct Auth {
     pub id: i32,
     pub user_id: i32,
     pub pin: String,
@@ -39,23 +39,22 @@ pub struct Auths {
 }
 
 // #[async_trait]
-impl Users {
-    pub  async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
+impl User {
+    pub async fn request_auth_code(auth: AuthCodeRequest) -> Result<AuthCodeRequest, anyhow::Error> {
         // let mut conn = db::connection()?;
-
         // let user = Users::email(auth.email());
 
-        let user = match Users::email(auth.email()) {
+        let user = match User::email(auth.email()) {
             Ok(user) => user,
-            Err(err) => Users::create(User { email: auth.email().to_string(), name: auth.email().to_string() })?
+            Err(err) => User::create(CreateUser { email: auth.email().to_string(), name: auth.email().to_string() })?
         };
 
         // Auths::belonging_to(&user).load();
 
-        let mut user_auth = match Auths::user(user.id) {
+        let mut user_auth = match Auth::user(user.id) {
             Ok(uauth) => uauth,
-            Err(err) => Auths::create(
-                Auth {
+            Err(err) => Auth::create(
+                CreateAuth {
                     user_id: user.id,
                     pin: thread_rng().gen_range(100000..999999).to_string(),
                     tries: 0,
@@ -73,7 +72,7 @@ impl Users {
                 }
 
                 // Unlock account
-                user_auth = Auths::unlock(&user_auth)?;
+                user_auth = Auth::unlock(&user_auth)?;
             }
         }
 
@@ -93,9 +92,9 @@ impl Users {
     pub fn login(auth: AuthRequest) -> Result<Self, anyhow::Error> {
         // let mut conn = db::connection()?;
 
-        let user = Users::email(auth.email())?;
+        let user = User::email(auth.email())?;
 
-        let mut user_auth = Auths::user(user.id)?;
+        let mut user_auth = Auth::user(user.id)?;
 
         // Auths::belonging_to(&user).load();
 
@@ -107,7 +106,7 @@ impl Users {
                 }
 
                 // Unlock account
-                user_auth = Auths::unlock(&user_auth)?;
+                user_auth = Auth::unlock(&user_auth)?;
             }
         }
 
@@ -116,12 +115,12 @@ impl Users {
 
             if user_auth.tries >= 3 {
                 user_auth.locked_until = Some(Utc::now() + Duration::minutes(1));
-                user_auth = Auths::update(user_auth.id, user_auth.into())?;
+                user_auth = Auth::update(user_auth.id, user_auth.into())?;
 
                 anyhow::bail!(format!("Account is locked until {}", user_auth.locked_until.unwrap().to_string()));
             }
 
-            user_auth = Auths::update(user_auth.id, user_auth.into())?;
+            user_auth = Auth::update(user_auth.id, user_auth.into())?;
             anyhow::bail!(format!("Invalid credentials. Tries remaining: {}", (3 - user_auth.tries).to_string()));
         }
 
@@ -158,10 +157,10 @@ impl Users {
 //     fn profile() -> Result<Option<()>, anyhow::Error>;
 // }
 
-impl Auths {
+impl Auth {
     pub fn all() -> Result<Vec<Self>, anyhow::Error> {
         let mut conn = db::connection()?;
-        let auths = auth::table.load::<Auths>(&mut conn)?;
+        let auths = auth::table.load::<Auth>(&mut conn)?;
         Ok(auths)
     }
 
@@ -177,16 +176,16 @@ impl Auths {
         Ok(auth)
     }
 
-    pub fn create(auth: Auth) -> Result<Self, anyhow::Error> {
+    pub fn create(auth: CreateAuth) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
-        let auth = Auth::from(auth);
+        let auth = CreateAuth::from(auth);
         let auth = diesel::insert_into(auth::table)
             .values(auth)
             .get_result(&mut conn)?;
         Ok(auth)
     }
 
-    pub fn update(id: i32, auth: Auth) -> Result<Self, anyhow::Error> {
+    pub fn update(id: i32, auth: CreateAuth) -> Result<Self, anyhow::Error> {
         let mut conn = db::connection()?;
         let user = diesel::update(auth::table)
             .filter(auth::id.eq(id))
@@ -195,7 +194,7 @@ impl Auths {
         Ok(user)
     }
 
-    pub fn unlock(user_auth: &Auths) -> Result<Self, anyhow::Error> {
+    pub fn unlock(user_auth: &Auth) -> Result<Self, anyhow::Error> {
         #[derive(AsChangeset)]
         #[diesel(table_name = auth)]
         #[changeset_options(treat_none_as_null = "true")]
@@ -223,9 +222,9 @@ impl Auths {
     }
 }
 
-impl Auth {
-    fn from(auth: Auth) -> Auth {
-        Auth {
+impl CreateAuth {
+    fn from(auth: CreateAuth) -> CreateAuth {
+        CreateAuth {
             user_id: auth.user_id,
             pin: auth.pin,
             tries: auth.tries,
@@ -237,9 +236,9 @@ impl Auth {
     }
 }
 
-impl From<Auths> for Auth {
-    fn from(auth: Auths) -> Auth {
-        Auth {
+impl From<Auth> for CreateAuth {
+    fn from(auth: Auth) -> CreateAuth {
+        CreateAuth {
             user_id: auth.user_id,
             pin: auth.pin,
             tries: auth.tries,
